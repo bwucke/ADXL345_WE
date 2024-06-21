@@ -15,22 +15,50 @@
 *********************************************************************/
 
 #include "ADXL345_WE.h"
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <linux/spi/spidev.h>
+#include <unistd.h>
 
 /************ Basic settings ************/
-    
+
+
+
+bool ADXL345_WE::setupSPI() {
+    spiFd = open(path.c_str(), O_RDWR);
+    if (spiFd < 0) {
+        perror("Error opening SPI device");
+        return false;
+    }
+
+    int mode = SPI_MODE3; // Mode 0: CPOL=0, CPHA=0
+    if (ioctl(spiFd, SPI_IOC_WR_MODE, &mode) == -1) {
+        perror("Error setting SPI mode");
+        close(spiFd);
+        return false;
+    }
+
+    uint8_t bitsPerWord = 8;
+    if (ioctl(spiFd, SPI_IOC_WR_BITS_PER_WORD, &bitsPerWord) == -1) {
+        perror("Error setting bits per word");
+        close(spiFd);
+        return false;
+    }
+
+    uint32_t speedHz = 5000000; // 1MHz
+    if (ioctl(spiFd, SPI_IOC_WR_MAX_SPEED_HZ, &speedHz) == -1) {
+        perror("Error setting SPI clock speed");
+        close(spiFd);
+        return false;
+    }
+
+    return true;
+}
+
+
 bool ADXL345_WE::init(){    
-    if(useSPI){
-        if(mosiPin == 999){
-            _spi->begin();
-        }
-#ifdef ESP32
-        else{
-            _spi->begin(sckPin, misoPin, mosiPin, csPin);
-        }
-#endif
-        mySPISettings = SPISettings(5000000, MSBFIRST, SPI_MODE3);
-        pinMode(csPin, OUTPUT);
-        digitalWrite(csPin, HIGH);
+    if (!setupSPI()) {
+        return false;
     }
     writeRegister(ADXL345_POWER_CTL,0);
     writeRegister(ADXL345_POWER_CTL, 16);   
@@ -68,7 +96,7 @@ bool ADXL345_WE::init(){
 }
 
 void ADXL345_WE::setSPIClockSpeed(unsigned long clock){
-    mySPISettings = SPISettings(clock, MSBFIRST, SPI_MODE3);
+    mySPISettings = SPISettings(clock, SPI_MSBFIRST, SPI_MODE3);
 }
 
 void ADXL345_WE::setCorrFactors(float xMin, float xMax, float yMin, float yMax, float zMin, float zMax){
@@ -145,7 +173,7 @@ adxl345_range ADXL345_WE::getRange(){
     return adxl345_range(regVal);
 }
 
-void ADXL345_WE::setFullRes(boolean full){
+void ADXL345_WE::setFullRes(bool full){
     regVal = readRegister8(ADXL345_DATA_FORMAT);
     if(full){
         adxl345_lowRes = false;
@@ -609,68 +637,69 @@ void ADXL345_WE::resetTrigger(){
 *************************************************/
 
 uint8_t ADXL345_WE::writeRegister(uint8_t reg, uint8_t val){
-    if(!useSPI){
-        _wire->beginTransmission(i2cAddress);
-        _wire->write(reg);
-        _wire->write(val);
-  
-        return _wire->endTransmission();
+	    uint8_t txData[] = {reg, val};
+
+    struct spi_ioc_transfer transfer = {
+       .tx_buf = (__u64)txData,
+       .rx_buf = (__u64) NULL,
+       .len = (unsigned int) sizeof(txData),
+       .speed_hz = mySPISettings._clock,
+       .delay_usecs = 0,
+       .bits_per_word = mySPISettings._bitsPerWord,
+       .cs_change = 0,
+    };
+
+    if (ioctl(spiFd, SPI_IOC_MESSAGE(1), &transfer) < 0) {
+        perror("SPI transfer error");
+        return 1; // Indicate error
     }
-    else{
-        _spi->beginTransaction(mySPISettings);
-        digitalWrite(csPin, LOW);
-        _spi->transfer(reg); 
-        _spi->transfer(val);
-        digitalWrite(csPin, HIGH);
-        _spi->endTransaction();
-        return false; // to be amended
-    }
+
+    return 0; // Success
 }
   
 uint8_t ADXL345_WE::readRegister8(uint8_t reg){
-    uint8_t regValue = 0;
-    if(!useSPI){    
-        _wire->beginTransmission(i2cAddress);
-        _wire->write(reg);
-        _wire->endTransmission(false);
-        _wire->requestFrom(i2cAddress, static_cast<uint8_t>(1));
-        if(_wire->available()){
-            regValue = _wire->read();
-        }
+    reg |= 0x80;
+    uint8_t txData[] = {reg, 0x00};
+    uint8_t rxData[2] = {0};
+
+    struct spi_ioc_transfer transfer = {
+       .tx_buf = (__u64)txData,
+       .rx_buf = (__u64)rxData,
+       .len = (unsigned int) sizeof(txData),
+       .speed_hz = mySPISettings._clock,
+       .delay_usecs = 0,
+       .bits_per_word = mySPISettings._bitsPerWord,
+       .cs_change = 0,
+    };
+
+    if (ioctl(spiFd, SPI_IOC_MESSAGE(1), &transfer) < 0) {
+        perror("SPI transfer error");
+        return 0; // Error handling
     }
-    else{
-        reg |= 0x80;
-        _spi->beginTransaction(mySPISettings);
-        digitalWrite(csPin, LOW);
-        _spi->transfer(reg); 
-        regValue = _spi->transfer(0x00);
-        digitalWrite(csPin, HIGH);
-        _spi->endTransaction();
-    }
-    return regValue;
+
+    return rxData[1];
 }
 
 void ADXL345_WE::readMultipleRegisters(uint8_t reg, uint8_t count, uint8_t *buf){
-    if(!useSPI){
-        _wire->beginTransmission(i2cAddress);
-        _wire->write(reg);
-        _wire->endTransmission(false);
-        _wire->requestFrom(i2cAddress,count);
-        for(int i=0; i<count; i++){
-            buf[i] = _wire->read();
-        }    
-    }
-    else{
-        reg = reg | 0x80;
-        reg = reg | 0x40;
-        _spi->beginTransaction(mySPISettings);
-        digitalWrite(csPin, LOW);
-        _spi->transfer(reg); 
-        for(int i=0; i<count; i++){
-            buf[i] = _spi->transfer(0x00);
-        }
-        digitalWrite(csPin, HIGH);
-        _spi->endTransaction();
+    reg |= 0x80;
+    reg |= 0x40;
+
+    uint8_t txData[count + 1];
+    txData[0] = reg;
+    memset(txData + 1, 0x00, count);
+
+    struct spi_ioc_transfer transfer = {
+       .tx_buf = (__u64)txData,
+       .rx_buf = (__u64)buf,
+       .len = (unsigned int) sizeof(txData),
+       .speed_hz = mySPISettings._clock,
+       .delay_usecs = 0,
+       .bits_per_word = mySPISettings._bitsPerWord,
+       .cs_change = 0,
+    };
+
+    if (ioctl(spiFd, SPI_IOC_MESSAGE(1), &transfer) < 0) {
+        perror("SPI transfer error");
     }
 }
 

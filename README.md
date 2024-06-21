@@ -1,5 +1,28 @@
 # ADXL345_WE
-Arduino Library for the ADXL345 accelerometer. 
+Linux library for the ADXL345 accelerometer, using spidev. 
+
+Forked from [ADXL345_WE by Wolfgang (Wolle) Ewald](https://github.com/wollewald/ADXL345_WE)
+
+The changes vs the original:
+
+- only one constructor now, taking path to the device:
+
+    ADXL345_WE myAcc = ADXL345_WE("/dev/spidev1.1");
+
+- all SPI functions switched to talk over spidev respectively
+- converted to regular C++ from Arduino flavor (albeit retaining a bunch of Arduinisms, for example I typedef'd bool boolean, String std::string)
+- Only one simple example is left. I don't have time or patience to convert the rest from Arduino sketchea. Go to original repository to get them and edit to work (compare original's [ADXL345_SPI_basic_data.ino](https://github.com/wollewald/ADXL345_WE/blob/main/examples/ADXL345_SPI_basic_data/ADXL345_SPI_basic_data.ino) with mine [hADXL345_SPI_basic_data.cpp](https://github.com/bwucke/ADXL345_WE/blob/main/examples/ADXL345_SPI_basic_data/ADXL345_SPI_basic_data.cpp) to see what needs to be done. Generally mainly switch the constructor, attach a trivial main(), switch output from Serial to console, adjust types if needed.
+
+No changes vs the original:
+
+- there's still a bunch of dead code regarding pins, Arduino's SPI, and original's support for I2C which is now hardcoded to be always off.
+- I didn't touch what I didn't understand. Or need, in particular, so if the result is that some functions are broken or unavailable, sorry!
+
+---
+
+This project was born from urgent need to debug ADXL345 connected to Octoprint+Klipper; it's served its purpose for me and I don't plan to develop or maintain it any longer. Also, don't expect any support regarding spidev or ADXL345, I'm not knowledgeable with them to any degree. Also, don't submit any issues, bugs, bugfixes, feature requests, features, or anything. If you can fix it yourself, just fork it and fix. If you can't - sorry, provided as-is. Find someone else to do it, not me.
+
+<h2> Original author's message </h2>
 
 I have tried to create a library for the ADXL345 which is easy to use for people who don't want to deal with all the registers. Therefore I have added lots example sketches which will enable you to deal even with the more complex features such as the FIFO modes. Howerever I still recommend to have a look into the data sheet to get a deeper understanding. 
 

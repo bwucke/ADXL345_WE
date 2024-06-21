@@ -1,6 +1,7 @@
 MIT License
 
-Copyright (c) 2020 Wolfgang (Wolle) Ewald
+Copyright (c) 2020 Wolfgang (Wolle) Ewald (Arduino original)
+Copyright (c) 2020 Bartosz Wucke (Linux fork)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

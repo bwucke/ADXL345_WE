@@ -19,14 +19,21 @@
 #ifndef ADXL345_WE_H_
 #define ADXL345_WE_H_
 
-#if (ARDUINO >= 100)
- #include "Arduino.h"
-#else
- #include "WProgram.h"
-#endif
+#include <cstdint>
+#include <math.h>
+#include <cstdio>
+#include <cstring>
+#include <string>
 
-#include <Wire.h>
-#include <SPI.h>
+typedef std::string String;
+typedef bool bolean;
+
+#define SPI_LSBFIRST 0
+#define SPI_MSBFIRST 1
+#define SPI_MODE0 0
+#define SPI_MODE1 1
+#define SPI_MODE2 2
+#define SPI_MODE3 3
 
 /* Definitions */
 
@@ -114,6 +121,15 @@ struct xyzFloat {
     float z;
 };
 
+class SPISettings {
+public:
+  SPISettings() : _clock(5000000), _bitOrder(SPI_MSBFIRST), _dataMode(SPI_MODE0), _bitsPerWord(8) {}
+  SPISettings(uint32_t clock, uint8_t bitOrder, uint8_t dataMode) : _clock(clock), _bitOrder(bitOrder), _dataMode(dataMode), _bitsPerWord(8) {}
+  uint32_t _clock;
+  uint8_t _bitOrder;
+  uint8_t _dataMode;
+  uint8_t _bitsPerWord;
+};
 
 class ADXL345_WE
 {
@@ -121,15 +137,7 @@ class ADXL345_WE
         
         /* Constructors */
         
-        ADXL345_WE(uint8_t addr = 0x53) : _wire{&Wire}, i2cAddress{addr}, useSPI{false} {}
-        
-        ADXL345_WE(TwoWire *w, uint8_t addr = 0x53) : _wire{w}, i2cAddress{addr}, useSPI{false} {}
-        
-        ADXL345_WE(int cs, bool spi, int mosi = 999, int miso = 999, int sck = 999) 
-            : _spi{&SPI}, csPin{cs}, useSPI{spi}, mosiPin{mosi}, misoPin{miso}, sckPin{sck} {}
-            
-        ADXL345_WE(SPIClass *s, int cs, bool spi, int mosi = 999, int miso = 999, int sck = 999)
-            :  _spi{s}, csPin{cs}, useSPI{spi}, mosiPin{mosi}, misoPin{miso}, sckPin{sck} {}
+        ADXL345_WE(String path_) : path(path_), useSPI{true} {}
         
         /* registers */
         
@@ -178,6 +186,7 @@ class ADXL345_WE
         /* Basic settings */
         
         bool init();
+	bool setupSPI();
         void setSPIClockSpeed(unsigned long clock);
         void setCorrFactors(float xMin, float xMax, float yMin, float yMax, float zMin, float zMax);
         void setDataRate(adxl345_dataRate rate);
@@ -186,7 +195,7 @@ class ADXL345_WE
         uint8_t getPowerCtlReg();
         void setRange(adxl345_range range);
         adxl345_range getRange();
-        void setFullRes(boolean full);
+        void setFullRes(bool full);
         String getRangeAsString();
         
         /* x,y,z results */
@@ -242,8 +251,8 @@ class ADXL345_WE
         void resetTrigger();
        
     protected:
-        TwoWire *_wire;
-        SPIClass *_spi;
+	int spiFd;
+        String path;
         SPISettings mySPISettings;
         uint8_t i2cAddress;
         uint8_t regVal;   // intermediate storage of register values
