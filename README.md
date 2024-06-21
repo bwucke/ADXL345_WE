@@ -11,7 +11,7 @@ The changes vs the original:
 
 - all SPI functions switched to talk over spidev respectively
 - converted to regular C++ from Arduino flavor (albeit retaining a bunch of Arduinisms, for example I typedef'd bool boolean, String std::string)
-- Only one simple example is left. I don't have time or patience to convert the rest from Arduino sketchea. Go to original repository to get them and edit to work (compare original's [ADXL345_SPI_basic_data.ino](https://github.com/wollewald/ADXL345_WE/blob/main/examples/ADXL345_SPI_basic_data/ADXL345_SPI_basic_data.ino) with mine [hADXL345_SPI_basic_data.cpp](https://github.com/bwucke/ADXL345_WE/blob/main/examples/ADXL345_SPI_basic_data/ADXL345_SPI_basic_data.cpp) to see what needs to be done. Generally mainly switch the constructor, attach a trivial main(), switch output from Serial to console, adjust types if needed.
+- Only one simple example is left. I don't have time or patience to convert the rest from Arduino sketches. Go to original repository to get them and edit to work (compare original's [ADXL345_SPI_basic_data.ino](https://github.com/wollewald/ADXL345_WE/blob/main/examples/ADXL345_SPI_basic_data/ADXL345_SPI_basic_data.ino) with mine [hADXL345_SPI_basic_data.cpp](https://github.com/bwucke/ADXL345_WE/blob/main/examples/ADXL345_basic_data/ADXL345_basic_data.cpp) to see what needs to be done. Generally mainly switch the constructor, attach a trivial main(), switch output from Serial to console, adjust types if needed.
 
 No changes vs the original:
 
